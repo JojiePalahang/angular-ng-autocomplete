@@ -10,9 +10,9 @@ import {
   ViewChild,
   ViewEncapsulation
 } from '@angular/core';
-import {fromEvent, Observable} from 'rxjs';
-import {debounceTime, filter, map} from 'rxjs/operators';
-import {ControlValueAccessor, NG_VALUE_ACCESSOR} from '@angular/forms';
+import { fromEvent, Observable } from 'rxjs';
+import { debounceTime, filter, map, distinctUntilChanged } from 'rxjs/operators';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 /**
  * Keyboard events
@@ -48,7 +48,7 @@ const isTab = keyCode => keyCode === 9;
 export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAccessor {
   @ViewChild('searchInput') searchInput: ElementRef; // input element
   @ViewChild('filteredListElement') filteredListElement: ElementRef; // element of items
-  @ViewChild('historyListElement') historyListElement: ElementRef; // element of history items
+  // @ViewChild('historyListElement') historyListElement: ElementRef; // element of history items
 
   inputKeyUp$: Observable<any>; // input events
   inputKeyDown$: Observable<any>; // input events
@@ -67,9 +67,8 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
   public overlay = false;
   private manualOpen = undefined;
   private manualClose = undefined;
+  private userSelect = false;
 
-
-  // inputs
   /**
    * Data of items list.
    * It can be array of strings or array of objects.
@@ -95,6 +94,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
   @Input() public isLoading: boolean; // loading mask
   @Input() public debounceTime: 400; // delay time while typing
   @Input() public disabled: boolean; // input disable/enable
+  @Input() public mandatory = false; // input mandatory
   /**
    * The minimum number of characters the user must type before a search is performed.
    */
@@ -123,6 +123,11 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
   /** Event that is emitted when scrolled to the end of items. */
   @Output() readonly scrolledToEnd: EventEmitter<void> = new EventEmitter<void>();
 
+  /** Event that is emitted when close button is clicked */
+  @Output() readonly closeButtonClick: EventEmitter<void> = new EventEmitter<void>();
+
+  /** Event that is emitted when enter key is called */
+  @Output() readonly enterKeyEvent: EventEmitter<any> = new EventEmitter<any>();
 
   // custom templates
   @ContentChild(TemplateRef)
@@ -141,6 +146,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
    * Updates model
    */
   writeValue(value: any) {
+    this.notFound = false;
     this.query = value;
   }
 
@@ -187,7 +193,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
    */
   public setInitialValue(value: any) {
     if (this.initialValue) {
-      this.select(value);
+      this.selectItem(value, false);
     }
   }
 
@@ -227,15 +233,17 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
     this.initSearchHistory();
     if (this.query != null && this.data) {
       this.toHighlight = this.query;
-      this.filteredList = this.data.filter((item: any) => {
+      const list = this.data.filter((item: any) => {
         if (typeof item === 'string') {
           // string logic, check equality of strings
           return item.toLowerCase().indexOf(this.query.toLowerCase()) > -1;
         } else if (typeof item === 'object' && item.constructor === Object) {
           // object logic, check property equality
-          return item[this.searchKeyword].toLowerCase().indexOf(this.query.toLowerCase()) > -1;
+          const condition = item[this.searchKeyword].toString().toLowerCase().lastIndexOf(this.query.toLowerCase(), 0) === 0;
+          return condition;
         }
       });
+      this.filteredList = [...list];
     } else {
       this.notFound = false;
     }
@@ -254,12 +262,14 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
    * Select item in the list.
    * @param item
    */
-  public select(item) {
+  public selectItem(item, enter) {
     this.query = !this.isType(item) ? item[this.searchKeyword] : item;
     this.isOpen = true;
     this.overlay = false;
-    this.selected.emit(item);
+    this.selected.emit({ item, enter, invalid: false });
     this.propagateChange(item);
+    this.notFound = false;
+    this.userSelect = true;
 
     if (this.initialValue) {
       // check if history already exists in localStorage and then update
@@ -380,6 +390,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
 
     // if close control is touched and activated
     if (this.manualClose) {
+      console.log("--- It went here");
       this.isOpen = true;
       this.handleClose();
       this.manualClose = false;
@@ -418,6 +429,8 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
     this.inputCleared.emit();
     this.propagateChange(this.query);
     this.setPanelState(e);
+    this.notFound = false;
+    this.closeButtonClick.emit();
   }
 
   /**
@@ -461,7 +474,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
     this.overlay = false;
     this.filteredList = [];
     this.selectedIdx = -1;
-    this.notFound = false;
+    // this.notFound = false;
     this.isHistoryListVisible = false;
     this.isFocused = false;
     this.closed.emit();
@@ -472,9 +485,11 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
     if (this.isFocused) {
       return;
     }
+
     this.inputFocused.emit(e);
     // if data exists then open
     if (this.data && this.data.length) {
+      this.manualClose = false;
       this.setPanelState(event);
     }
     this.isFocused = true;
@@ -530,10 +545,11 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
           !isEnter(e.keyCode) &&
           !isESC(e.keyCode) &&
           !isTab(e.keyCode)),
+        distinctUntilChanged(),
         debounceTime(this.debounceTime)
       ).subscribe(e => {
-      this.onKeyUp(e);
-    });
+        this.onKeyUp(e);
+      });
 
     // cursor up & down
     this.inputKeyDown$.pipe(filter(
@@ -545,7 +561,6 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
 
     // enter keyup
     this.inputKeyUp$.pipe(filter(e => isEnter(e.keyCode))).subscribe(e => {
-      //this.onHandleEnter();
     });
 
     // enter keydown
@@ -559,6 +574,13 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
         debounceTime(100))
     ).subscribe(e => {
       this.onEsc();
+    });
+
+    // TAB
+    this.inputKeyDown$.pipe(
+      filter(e => isTab(e.keyCode))
+    ).subscribe(e => {
+      this.onTab();
     });
 
     // delete
@@ -590,7 +612,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
 
       // If no results found
       if (!this.filteredList.length) {
-        this.notFoundText ? this.notFound = true : this.notFound = false;
+        this.notFound = true
       }
     }
   }
@@ -647,7 +669,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
       listElement = this.filteredListElement.nativeElement;
     } else {
       // historyList element
-      listElement = this.historyListElement.nativeElement;
+      // listElement = this.historyListElement.nativeElement;
     }
 
     const items = Array.prototype.slice.call(listElement.childNodes).filter((node: any) => {
@@ -691,15 +713,24 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
           : this.filteredList[this.selectedIdx];
 
         this.saveHistory(this.filteredList[this.selectedIdx]);
-        this.select(this.filteredList[this.selectedIdx]);
+        this.selectItem(this.filteredList[this.selectedIdx], true);
       } else {
         // historyList
         this.query = !this.isType(this.historyList[this.selectedIdx])
           ? this.historyList[this.selectedIdx][this.searchKeyword]
           : this.historyList[this.selectedIdx];
         this.saveHistory(this.historyList[this.selectedIdx]);
-        this.select(this.historyList[this.selectedIdx]);
+        this.selectItem(this.historyList[this.selectedIdx], true);
       }
+    } else {
+      let item = null;
+      if (this.query != null && this.data) {
+        item = this.data.find(pitem => {
+          return pitem[this.searchKeyword].toString().toLowerCase() === this.query.toLowerCase();
+        });
+      }
+      const invalid = this.checkNotFoundValue();
+      this.selected.emit({ item, invalid, enter: true });
     }
     this.isHistoryListVisible = false;
     this.handleClose();
@@ -709,7 +740,14 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
    * Esc click
    */
   onEsc() {
+    this.userSelect = false;
     this.searchInput.nativeElement.blur();
+    this.handleClose();
+  }
+
+  onTab() {
+    this.userSelect = false;
+    this.isOpen = true;
     this.handleClose();
   }
 
@@ -718,6 +756,7 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
    */
   onDelete() {
     // panel is open on delete
+    this.userSelect = false;
     this.isOpen = true;
   }
 
@@ -793,5 +832,47 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
     this.historyList = [];
     window.localStorage.removeItem(`${this.historyIdentifier}`);
     this.filterList();
+  }
+
+  get simplyfiedNotFound(): boolean {
+    const check = this.checkNotFoundValue();
+    return check;
+  }
+
+  checkNotFoundValue() {
+    if (!this.query || (this.query && this.query.length === 0)) {
+      return false;
+    }
+
+    if (this.isOpen && this.filteredList.length > 0) {
+      return false;
+    }
+    const condition = this.isLoading ? !this.isLoading && this.notFound : this.notFound;
+
+    if (condition) {
+      this.userSelect = false;
+    }
+
+    return condition;
+  }
+
+  handleFocusOut() {
+    if (this.userSelect) {
+      return;
+    }
+
+    let item = null;
+    if (this.query != null && this.data) {
+      item = this.data.find(pitem => {
+        return pitem[this.searchKeyword].toString().toLowerCase() === this.query.toLowerCase();
+      });
+    }
+    if (!item) {
+      this.notFound = true;
+    }
+    this.userSelect = false;
+
+    const invalid = this.checkNotFoundValue();
+    this.selected.emit({ item, invalid, enter: false });
   }
 }

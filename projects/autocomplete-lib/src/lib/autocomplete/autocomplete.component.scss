@@ -1,4 +1,30 @@
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+// @import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;  /* Preferred icon size */
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+
+  /* Support for all WebKit browsers. */
+  -webkit-font-smoothing: antialiased;
+  /* Support for Safari and Chrome. */
+  text-rendering: optimizeLegibility;
+
+  /* Support for Firefox. */
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Support for IE. */
+  font-feature-settings: 'liga';
+}
+
 
 $width: 600px;
 .ng-autocomplete {
@@ -6,7 +32,7 @@ $width: 600px;
 }
 
 .autocomplete-container {
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .2), 0 1px 1px 0 rgba(0, 0, 0, .14), 0 2px 1px -1px rgba(0, 0, 0, .12);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 2px 1px -1px rgba(0, 0, 0, 0.12);
   position: relative;
   overflow: visible;
   height: 40px;
@@ -18,15 +44,21 @@ $width: 600px;
       border: none;
       box-shadow: none;
       outline: none;
-      background-color: #FFFFFF;
+      background-color: #ffffff;
       color: rgba(0, 0, 0, 0.87);
       width: 100%;
-      padding: 0 15px;
+      padding: 0 12px;
       line-height: 40px;
       height: 40px;
       &:disabled {
         background-color: #eee;
         color: #666;
+      }
+      &.not-found-value {
+        border: 1px solid red;
+      }
+      &.field-mandatory {
+        background-color: #fff7e0 !important;
       }
     }
     .x {
@@ -40,6 +72,10 @@ $width: 600px;
         color: rgba(0, 0, 0, 0.54);
         font-size: 22px;
         vertical-align: middle;
+        background-color: #fff !important;
+        &.field-mandatory {
+          background-color: #fff7e0 !important;
+        }
       }
     }
   }
@@ -48,7 +84,7 @@ $width: 600px;
     width: 100%;
     background: white;
     height: auto;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, .25);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
     -webkit-box-sizing: border-box;
     -moz-box-sizing: border-box;
     box-sizing: border-box;
@@ -113,8 +149,8 @@ $width: 600px;
     border: solid 1px #f1f1f1;
     background: white;
     div {
-      padding: .4em 0;
-      font-size: .95em;
+      padding: 0.4em 0;
+      font-size: 0.95em;
       line-height: 1.4;
       border-bottom: 1px solid rgba(230, 230, 230, 0.7);
     }
@@ -138,7 +174,7 @@ $width: 600px;
   z-index: 50;
 }
 
-input[type=text]::-ms-clear {
+input[type="text"]::-ms-clear {
   display: none;
 }
 
@@ -163,7 +199,7 @@ input[type=text]::-ms-clear {
 }
 
 .sk-fading-circle .sk-circle:before {
-  content: '';
+  content: "";
   display: block;
   margin: 0 auto;
   width: 15%;
@@ -296,7 +332,9 @@ input[type=text]::-ms-clear {
 }
 
 @-webkit-keyframes sk-circleFadeDelay {
-  0%, 39%, 100% {
+  0%,
+  39%,
+  100% {
     opacity: 0;
   }
   40% {
@@ -305,7 +343,9 @@ input[type=text]::-ms-clear {
 }
 
 @keyframes sk-circleFadeDelay {
-  0%, 39%, 100% {
+  0%,
+  39%,
+  100% {
     opacity: 0;
   }
   40% {
