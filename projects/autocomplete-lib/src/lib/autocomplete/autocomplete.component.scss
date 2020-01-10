@@ -36,12 +36,14 @@ $width: 600px;
   position: relative;
   overflow: visible;
   height: 40px;
+  
 
   .input-container {
+    border: none !important;
     input {
       font-size: 14px;
       box-sizing: border-box;
-      border: none;
+      border: solid 1px #ced4da;
       box-shadow: none;
       outline: none;
       background-color: #ffffff;

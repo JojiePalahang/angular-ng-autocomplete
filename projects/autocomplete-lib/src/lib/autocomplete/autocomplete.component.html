@@ -1,4 +1,4 @@
-<div class="autocomplete-container" [ngClass]="{ 'active': isOpen }">
+<div class="autocomplete-container" [ngClass]="{ 'active': isOpen }" style="border:none !important">
   <div class="input-container">
     <input #searchInput type="text" placeholder={{placeHolder}} [(ngModel)]=query (input)="onChange($event)"
       (focus)=handleFocus($event) (focusout)=handleFocusOut() [disabled]="disabled" maxlength="40"
