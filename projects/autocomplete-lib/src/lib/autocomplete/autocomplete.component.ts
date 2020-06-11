@@ -243,6 +243,12 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
           return condition;
         }
       });
+
+      if (list.length === 1) {
+        this.selectedIdx = 0;
+        this.scrollToFocusedItem(0);
+      }
+
       this.filteredList = [...list];
     } else {
       this.notFound = false;
@@ -390,7 +396,6 @@ export class AutocompleteComponent implements OnInit, OnChanges, ControlValueAcc
 
     // if close control is touched and activated
     if (this.manualClose) {
-      console.log("--- It went here");
       this.isOpen = true;
       this.handleClose();
       this.manualClose = false;
