@@ -60,6 +60,10 @@ $width: 600px;
       &.field-mandatory {
         background-color: #fff7e0 !important;
       }
+      &:focus {
+        border: 0.5px solid #0079c8;
+        border-radius: 4px;
+      }
     }
     .x {
       position: absolute;
